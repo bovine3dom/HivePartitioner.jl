@@ -4,6 +4,7 @@ module ArrowHivePartitioner
 export writehivedir, readhivedir
 
 using Arrow, DataFrames # really should only depend on Tables.jl
+import Tables, TableOperations
 
 function writehivedir(outdir, df, groupkeys=[]; filename="part0.arrow")
     g = groupby(df, groupkeys)
@@ -16,16 +17,17 @@ function writehivedir(outdir, df, groupkeys=[]; filename="part0.arrow")
 end
 
 function readhivedir(hivedir)
-    mapreduce(x -> begin
+    # two regressions: only deal with one file per folder
+    #                  explode if non-arrow file found
+    Tables.partitioner(x -> begin
         (root, _, files) = x
-        mapreduce(file -> begin
-            colsvals = filter(x-> length(x) == 2,split(root,'/') .|> x -> split(x, '='))
-            df = Arrow.Table(joinpath(root, file)) |> DataFrame
-            for (col, val) in colsvals
-                df[!, col] .= val
-            end
-            df
-        end, vcat, Iterators.filter(f -> splitext(f)[end] == ".arrow", files))
-    end, vcat, Iterators.filter(x->length(x[3]) > 0, walkdir(hivedir)))
+        file = files[1]
+        colsvals = filter(x-> length(x) == 2,split(root,'/') .|> x -> split(x, '='))
+        df = Arrow.Table(joinpath(root, file)) |> DataFrame
+        for (col, val) in colsvals
+            df[!, col] .= val
+        end
+        df
+    end, Iterators.filter(x->length(x[3]) > 0, walkdir(hivedir))) |> TableOperations.joinpartitions |> DataFrame
 end
 end
