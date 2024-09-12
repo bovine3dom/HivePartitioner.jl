@@ -8,3 +8,12 @@ col1=no/
     col2=oops/
         another_file.arrow
 ```
+
+```
+a = DataFrame(a=[1,2,3], b=["a","b","a"])
+writehivedir("arrowtest", a, [:b])
+readhivedir("arrowtest")
+
+writehivedir("csvtest", a, [:b]; writer=CSV.write)
+readhivedir("csvtest"; reader=f->CSV.read(f, DataFrame))
+```
