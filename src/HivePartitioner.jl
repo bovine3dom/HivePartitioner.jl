@@ -1,12 +1,13 @@
 #!/bin/julia
 
-module ArrowHivePartitioner
+module HivePartitioner
 export writehivedir, readhivedir
 
-using Arrow, DataFrames # really should only depend on Tables.jl
 import Tables, TableOperations
+using DataFrames
 
-function writehivedir(outdir, df, groupkeys=[]; filename="part0.arrow", writer=(path, table)->Arrow.write(path, table; compress=:zstd))
+
+function writehivedir(writer, outdir, df, groupkeys=[]; filename="part0")
     g = groupby(df, groupkeys)
     for t in keys(g)
         !all(v -> >:(AbstractString, typeof(v)), values(t)) && throw("All grouped column values must be strings") # TODO: support other types?
@@ -16,7 +17,7 @@ function writehivedir(outdir, df, groupkeys=[]; filename="part0.arrow", writer=(
     end
 end
 
-function readhivedir(hivedir; reader=path->DataFrame(Arrow.Table(path)))
+function readhivedir(reader, hivedir)
     # two regressions: only deal with one file per folder
     #                  explode if non-readable file found
     Tables.partitioner(x -> begin

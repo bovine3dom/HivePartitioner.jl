@@ -1,4 +1,4 @@
-Quick and dirty script for reading/writing Hive-style partitioned arrow files in Julia, see `readhivedir` and `writehivedir`
+Quick and dirty script for reading/writing Hive-style partitioned files in Julia, see `readhivedir` and `writehivedir`
 
 ```
 col1=yes/
@@ -10,10 +10,14 @@ col1=no/
 ```
 
 ```
+using DataFrame
 a = DataFrame(a=[1,2,3], b=["a","b","a"])
-writehivedir("arrowtest", a, [:b])
-readhivedir("arrowtest")
 
-writehivedir("csvtest", a, [:b]; writer=CSV.write)
-readhivedir("csvtest"; reader=f->CSV.read(f, DataFrame))
+using CSV
+writehivedir(CSV.write, "csvtest", a, [:b]; filename="part0.csv")
+readhivedir(f->CSV.read(f, DataFrame), "csvtest")
+
+using Arrow
+writehivedir((path, table)->Arrow.write(path, table; compress=:zstd), "arrowtest", a, [:b]; filename="part0.arrow")
+readhivedir(path->DataFrame(Arrow.Table(path)), "arrowtest") # preserves mmap
 ```
